@@ -17,7 +17,7 @@ using UnityEngine;
 
 public class MeshInfoWindow : EditorWindow
 {
-    [MenuItem("Tools/Mesh Info Tool")]
+    [MenuItem("Tools/Mesh体积与质量计算工具")]
     static void Open() => GetWindow<MeshInfoWindow>("Mesh Info");
 
     /* ---------- 持久化 ---------- */
