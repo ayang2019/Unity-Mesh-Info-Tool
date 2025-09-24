@@ -1,0 +1,71 @@
+///*************************************************
+// * 工具名: 网格信息工具 (Mesh-Info-Tools) 之插件窗口
+// * 作者  : ayangbing@hotmail.com
+// * 仓库  : https://github.com/ayang2019/Unity-Mesh-Info-Tool/
+// * 许可  : MIT License
+// * 版本  : 1.0.0
+// * 日期  : <最后修改日期：2025-06-25>
+// * 
+// * 功能  : Unity Editor 插件，一键标注网格点并实时测量多段距离
+// * 说明  : 详见 GitHub README
+// *************************************************/
+using System.Threading;
+using Unity.EditorCoroutines.Editor;
+using UnityEditor;
+using UnityEngine;
+
+public class MeshFillerWindow : EditorWindow
+{
+    [MenuItem("Tools/Mesh补洞工具")]
+    static void Open() => GetWindow<MeshFillerWindow>("Mesh补洞");
+
+    private MeshFilter _mf;
+    private EditorCoroutine _coroutine;
+    private MeshFillerAsync _worker;
+    private CancellationTokenSource _cts;
+
+    private void OnGUI()
+    {
+        GUILayout.Space(10);
+        _mf = (MeshFilter)EditorGUILayout.ObjectField("目标 MeshFilter", _mf, typeof(MeshFilter), true);
+        GUILayout.Space(10);
+
+        if (_worker == null)
+        {
+            if (GUILayout.Button("开始补洞", GUILayout.Height(30)))
+            {
+                if (_mf == null) { EditorUtility.DisplayDialog("提示", "请先指定 MeshFilter", "OK"); return; }
+                _cts = new CancellationTokenSource();
+                _worker = new MeshFillerAsync(_mf.sharedMesh, _cts.Token);
+                _coroutine = EditorCoroutineUtility.StartCoroutineOwnerless(_worker.Fill());
+            }
+        }
+        else
+        {
+            var r = _worker.CurrentReport;
+            EditorGUI.ProgressBar(GUILayoutUtility.GetRect(50, 20), r.progress, r.phase);
+            Repaint();
+
+            if (r.finished || r.cancelled)
+            {
+                EditorUtility.DisplayDialog("提示", r.cancelled ? "已取消" : "补洞完成！", "OK");
+                Reset();
+            }
+
+            if (GUILayout.Button("取消", GUILayout.Height(25)))
+            {
+                _cts?.Cancel();
+            }
+        }
+    }
+
+    private void OnDisable() => Reset();
+
+    private void Reset()
+    {
+        if (_cts != null) { _cts.Cancel(); _cts.Dispose(); }
+        _cts = null;
+        _worker = null;
+        _coroutine = null;
+    }
+}
